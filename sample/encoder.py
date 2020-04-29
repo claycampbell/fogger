@@ -58,7 +58,7 @@ class Encoder:
 
         del self.encoder['<|endoftext|>']
 
-        for special_token_type in ['title', 'article', 'summary']:
+        for special_token_type in ['domain', 'date', 'authors', 'title', 'article', 'summary']:
             setattr(self, f'begin_{special_token_type}', len(self.encoder))
             self.encoder[f'<|begin{special_token_type}|>'] = len(self.encoder)
 
@@ -168,11 +168,12 @@ def _tokenize_article_pieces(encoder, item):
     :param item: Contains things that need to be tokenized
 
 
-    fields are ['title', 'article', 'summary']
+    fields are ['domain', 'date', 'authors', 'title', 'article', 'summary']
     :return: dict
     """
     article_pieces = {
-        'article': [encoder.begin_article] + encoder.encode(item['text']) + [encoder.end_article],    
+        'article': [encoder.begin_article] + encoder.encode(item['text']) + [encoder.end_article],
+        'domain': [encoder.begin_domain] + encoder.encode(item['domain']) + [encoder.end_domain],
         'title': [encoder.begin_title] + encoder.encode(item['title']) + [encoder.end_title],
     }
     # 4/6: Attach the summary too, why the hell not
@@ -239,7 +240,7 @@ def tokenize_for_grover_training(encoder, item, desired_size=1024, unconditional
           {"url": "https://www.advocate.com/node/1010911",
           "timestamp": "20180118211607",
            "url_used": "https://web.archive.org/web/20180118211607id_/https://www.advocate.com/node/1010911",
-      
+           "domain": "advocate.com",
            "title": "Report: One-Third of Trump's Judicial Picks Are Anti-LGBT",
            "text": ....
            "summary": ....
@@ -255,7 +256,7 @@ def tokenize_for_grover_training(encoder, item, desired_size=1024, unconditional
     """
     # Get all the bits and pieces
     article_pieces = _tokenize_article_pieces(encoder, item)
-    canonical_metadata_order = ['title']
+    canonical_metadata_order = ['domain', 'date', 'authors', 'title']
 
     # unconditional_prob is probability we only generate the text first, without any metadata
     switch = random.random()
@@ -346,7 +347,7 @@ def format_context(encoder, news_article, target):
     :param target: What we want to get an answer for.
     :return:
     """
-    canonical_metadata_order = ['title', 'article']
+    canonical_metadata_order = ['domain', 'date', 'authors', 'title', 'article']
     tokens = []
     for metadata_category in canonical_metadata_order:
         metadata = news_article.get(metadata_category, '').strip()
